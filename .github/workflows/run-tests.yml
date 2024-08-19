@@ -1,0 +1,33 @@
+name: Build and test
+on: 
+  pull_request:
+      branches:
+        - develop
+
+jobs:
+
+  run-tests-backend:
+    runs-on: ubuntu-latest
+    steps:
+        - name: checkout
+          uses: actions/checkout@v4
+        - name: Setup .NET
+          uses: actions/setup-dotnet@v3
+          with:
+            dotnet-version: '8.0.x'  
+
+        - name: Restore dependencies
+          run: |
+              dotnet restore AuthService/AuthService.sln
+              dotnet restore AuthService.Tests/AuthService.Tests.csproj
+
+        - name: Build
+          run: |
+            dotnet build AuthService/AuthService.sln --no-restore 
+            dotnet build AuthService.Tests/AuthService.Tests.csproj --no-restore 
+
+        - name: Run tests
+          run: dotnet test AuthService.Tests/AuthService.Tests.csproj --no-build 
+        
+
+     
