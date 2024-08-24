@@ -16,6 +16,9 @@ namespace AuthService.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<IdentityRole>().HasData(
+                new IdentityRole { Name = Role.GUEST.ToString(), NormalizedName = Role.GUEST.ToString() },
+                new IdentityRole { Name = Role.HOST.ToString(),     NormalizedName = Role.HOST.ToString() });
         }
     }
 }
