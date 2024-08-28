@@ -39,8 +39,8 @@ public class AuthControllerIntegrationTests
             // Arrange
             var registrationRequest = new RegistrationRequestDto
             {
-                Email = "newuser@example.com",
-                Name = "New User",
+                Email = "test@example.com",
+                Name = "User",
                 PhoneNumber = "1234567890",
                 Password = "Password123!",
                 Role = "GUEST"
@@ -54,6 +54,28 @@ public class AuthControllerIntegrationTests
             Assert.IsTrue(responseObj?.IsSuccess);
         }
 
+        [Test]
+        public async Task Register_UserNotCreated_ReturnsBadRequest()
+        {
+            SetupDbData();
+            // Arrange
+            var registrationRequest = new RegistrationRequestDto
+            {
+                Email = "test@example.com",
+                Name = "User",
+                PhoneNumber = "1234567890",
+                Password = "Password123!",
+                Role = "GUEST"
+            };
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/auth/register", registrationRequest);
+
+            // Assert
+            Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+            var resp = await response.Content.ReadFromJsonAsync<Response>();
+            Assert.IsFalse(resp.IsSuccess);
+        }
+        
         [Test]
         public async Task Login_ValidCredentials_ReturnsOk()
         {
@@ -113,7 +135,7 @@ public class AuthControllerIntegrationTests
                 var user = new ApplicationUser
                 {
                     Email = "test@example.com", // Assuming this email already exists
-                    Name = "Existing User",
+                    Name = "User",
                     UserName = "test@example.com",
                     PhoneNumber = "1234567890",
                     PasswordHash = "AQAAAAIAAYagAAAAEBQ7++M6z5N+Tly9yfor8HhJxhg52bNmZAIANR+cR6og/UgoUz8GhnlZQr2NFAP48g=="
