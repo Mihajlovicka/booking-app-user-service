@@ -14,7 +14,6 @@ public class Tests
     
     private Mock<AppDbContext> _mockDbContext;
     private Mock<UserManager<ApplicationUser>> _mockUserManager;
-    private Mock<RoleManager<IdentityRole>> _mockRoleManager;
     private Mock<IJwtTokenGenerator> _mockJwtTokenGenerator;
     private IAuthService _authService;
 
@@ -37,18 +36,11 @@ public class Tests
             null,
             null,
             null);
-        _mockRoleManager = new Mock<RoleManager<IdentityRole>>(
-            new Mock<IRoleStore<IdentityRole>>().Object,
-            null,
-            null,
-            null,
-            null);
         _mockJwtTokenGenerator = new Mock<IJwtTokenGenerator>();
 
         _authService = new Service.AuthService(
             _mockDbContext.Object,
             _mockUserManager.Object,
-            _mockRoleManager.Object,
             _mockJwtTokenGenerator.Object);
     }
     
