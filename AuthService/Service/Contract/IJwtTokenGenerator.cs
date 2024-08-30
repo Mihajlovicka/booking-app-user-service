@@ -1,6 +1,7 @@
 ﻿using AuthService.Model;
+using AuthService.Model.Entity;
 
-namespace AuthService.Service.IService
+namespace AuthService.Service.Contract
 {
     public interface IJwtTokenGenerator
     {

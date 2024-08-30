@@ -1,4 +1,4 @@
-﻿namespace AuthService.Model
+﻿namespace AuthService.Model.Entity
 {
     public class JwtOptions
     {

@@ -1,8 +1,8 @@
 using AuthService.Data;
-using AuthService.Model;
-using AuthService.Service;
-using AuthService.Service.IService;
+using AuthService.Extensions;
+using AuthService.Model.Entity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,14 +13,23 @@ builder.Services.AddDbContext<AppDbContext>(option =>
     option.UseMySQL(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("ApiSettings:JwtOptions"));
+builder.Services.AddCustomCors();
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>()
+//builder.Services.AddKafkaServices(builder.Configuration);
+builder.Services.AddCustomServices();
+
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("ApiSettings:JwtOptions"));
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+    options.SuppressModelStateInvalidFilter = true
+);
+
+builder
+    .Services.AddIdentity<ApplicationUser, IdentityRole<int>>()
+    .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddControllers();
-builder.Services.AddScoped<IAuthService, AuthService.Service.AuthService>();
-builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -38,17 +47,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseCors(CorsExtensions.GetCorsPolicyName());
+
 app.MapControllers();
-ApplyMigration();
+app.ApplyPendingMigrations();
 app.Run();
-
-
-void ApplyMigration()
-{
-    using(var scope= app.Services.CreateScope())
-    {
-        var _db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        if (_db.Database.GetPendingMigrations().Count() > 0) _db.Database.Migrate();
-    }
-}
