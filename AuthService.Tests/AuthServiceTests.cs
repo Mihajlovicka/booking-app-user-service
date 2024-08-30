@@ -1,31 +1,31 @@
 using AuthService.Data;
-using AuthService.Model;
+using AuthService.Mapper;
 using AuthService.Model.Dto;
-using AuthService.Service.IService;
+using AuthService.Model.Entity;
+using AuthService.Repository.Contract;
+using AuthService.Service.Contract;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Moq;
-using Moq.EntityFrameworkCore;
 
 namespace AuthService.Tests;
 
 public class Tests
 {
-    
     private Mock<AppDbContext> _mockDbContext;
+    private Mock<IRepositoryManager> _repositoryManagerMock;
+    private Mock<IMapperManager> _mapperManagerMock;
     private Mock<UserManager<ApplicationUser>> _mockUserManager;
     private Mock<IJwtTokenGenerator> _mockJwtTokenGenerator;
     private IAuthService _authService;
 
- 
-    
     [SetUp]
     public void Setup()
     {
-
-
         _mockDbContext = new Mock<AppDbContext>();
-        
+
+        _repositoryManagerMock = new Mock<IRepositoryManager>();
+        _mapperManagerMock = new Mock<IMapperManager>();
+
         _mockUserManager = new Mock<UserManager<ApplicationUser>>(
             new Mock<IUserStore<ApplicationUser>>().Object,
             null,
@@ -35,15 +35,21 @@ public class Tests
             null,
             null,
             null,
-            null);
+            null
+        );
         _mockJwtTokenGenerator = new Mock<IJwtTokenGenerator>();
 
-        _authService = new Service.AuthService(
-            _mockDbContext.Object,
+        _repositoryManagerMock
+            .Setup(repo => repo.UserRepository)
+            .Returns(new Mock<IUserRepository>().Object);
+
+        _authService = new Service.Implementation.AuthService(
+            _repositoryManagerMock.Object,
             _mockUserManager.Object,
-            _mockJwtTokenGenerator.Object);
+            _mockJwtTokenGenerator.Object,
+            _mapperManagerMock.Object
+        );
     }
-    
 
     [Test]
     public async Task Register_UserCreatedSuccessfully_ReturnsEmptyString()
@@ -52,36 +58,56 @@ public class Tests
         var registrationRequestDto = new RegistrationRequestDto
         {
             Email = "test@example.com",
-            Name = "Test User",
-            PhoneNumber = "1234567890",
+            FirstName = "First Name",
+            LastName = "Last Name",
             Password = "Password123!",
-            Role = "Guest"
+            Role = "Guest",
+            Address = new()
+            {
+                City = "City",
+                Country = "Country",
+                PostNumber = "PostNumber",
+                StreetName = "StreetName",
+                StreetNumber = "StreetNumber",
+            },
         };
         var user = new ApplicationUser
         {
             Email = "test@example.com",
-            Name = "Test User",
-            PhoneNumber = "1234567890",
-            UserName = "test@example.com"
+            FirstName = "First Name",
+            LastName = "Last Name",
+            UserName = "test@example.com",
         };
-        var lst = Enumerable.AsEnumerable([user]);
-        
-        // Mock DbContext to return the mocked DbSet
-        _mockDbContext.Setup(x => x.ApplicationUsers).ReturnsDbSet(lst);
-        
-        _mockUserManager.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+
+        _mapperManagerMock
+            .Setup(m =>
+                m.RegistrationsRequestDtoToApplicationUserMapper.Map(
+                    It.IsAny<RegistrationRequestDto>()
+                )
+            )
+            .Returns(user);
+
+        _repositoryManagerMock
+            .Setup(r => r.UserRepository.GetByUsername(It.IsAny<string>()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        _mockUserManager.Setup(um => um.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+        _mockUserManager
+            .Setup(um => um.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(IdentityResult.Success);
 
         // Act
         var result = await _authService.Register(registrationRequestDto);
 
-        // Assert
-        Assert.AreEqual("", result);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.ErrorMessage, Is.EqualTo(""));
+        });
     }
-
 
     [Test]
     public async Task Register_UserCreationFails_ReturnsErrorDescription()
@@ -90,25 +116,54 @@ public class Tests
         var registrationRequestDto = new RegistrationRequestDto
         {
             Email = "test@example.com",
-            Name = "Test User",
-            PhoneNumber = "1234567890",
+            FirstName = "First Name",
+            LastName = "Last Name",
             Password = "Password123!",
-            Role = "User"
+            Role = "User",
+            Address = new()
+            {
+                City = "City",
+                Country = "Country",
+                PostNumber = "PostNumber",
+                StreetName = "StreetName",
+                StreetNumber = "StreetNumber",
+            },
         };
-    
+
+        var user = new ApplicationUser
+        {
+            Email = "test@example.com",
+            FirstName = "First Name",
+            LastName = "Last Name",
+            UserName = "test@example.com",
+        };
+
         var identityError = new IdentityError { Description = "Error creating user." };
         var identityResult = IdentityResult.Failed(identityError);
-    
-        _mockUserManager.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+
+        _mapperManagerMock
+            .Setup(m =>
+                m.RegistrationsRequestDtoToApplicationUserMapper.Map(
+                    It.IsAny<RegistrationRequestDto>()
+                )
+            )
+            .Returns(user);
+
+        _mockUserManager
+            .Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(identityResult);
-    
+
         // Act
         var result = await _authService.Register(registrationRequestDto);
-    
+
         // Assert
-        Assert.AreEqual(identityError.Description, result);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.ErrorMessage, Is.EqualTo(identityError.Description));
+        });
     }
-    
+
     [Test]
     public async Task Register_ExceptionThrown_ReturnsErrorMessage()
     {
@@ -116,22 +171,50 @@ public class Tests
         var registrationRequestDto = new RegistrationRequestDto
         {
             Email = "test@example.com",
-            Name = "Test User",
-            PhoneNumber = "1234567890",
+            FirstName = "First Name",
+            LastName = "Last Name",
             Password = "Password123!",
-            Role = "User"
+            Role = "User",
+            Address = new()
+            {
+                City = "City",
+                Country = "Country",
+                PostNumber = "PostNumber",
+                StreetName = "StreetName",
+                StreetNumber = "StreetNumber",
+            },
         };
-    
-        _mockUserManager.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
-            .Throws(new System.Exception("Exception occurred"));
-    
+        var user = new ApplicationUser
+        {
+            Email = "test@example.com",
+            FirstName = "First Name",
+            LastName = "Last Name",
+            UserName = "test@example.com",
+        };
+
+        _mapperManagerMock
+            .Setup(m =>
+                m.RegistrationsRequestDtoToApplicationUserMapper.Map(
+                    It.IsAny<RegistrationRequestDto>()
+                )
+            )
+            .Returns(user);
+
+        _mockUserManager
+            .Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+            .Throws(new System.Exception("An error occurred during user creation"));
+
         // Act
         var result = await _authService.Register(registrationRequestDto);
-    
+
         // Assert
-        Assert.AreEqual("Error encountered!", result);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.ErrorMessage, Is.EqualTo("An error occurred during user creation"));
+        });
     }
-    
+
     [Test]
     public async Task Login_UserValid_ReturnsLoginResponseDto()
     {
@@ -139,7 +222,7 @@ public class Tests
         var loginRequestDto = new LoginRequestDto
         {
             Username = "testuser@example.com",
-            Password = "Password123!"
+            Password = "Password123!",
         };
 
         var user = new ApplicationUser
@@ -147,32 +230,51 @@ public class Tests
             UserName = loginRequestDto.Username,
             Email = loginRequestDto.Username,
             NormalizedEmail = loginRequestDto.Username.ToUpper(),
-            Name = "Test User",
-            PhoneNumber = "1234567890"
+            FirstName = "First Name",
+            LastName = "Last Name",
+            ExternalId = Guid.NewGuid(),
         };
-        
-        var lst = Enumerable.AsEnumerable([user]);
-        
-        // Mock DbContext to return the mocked DbSet
-        _mockDbContext.Setup(x => x.ApplicationUsers).ReturnsDbSet(lst);
 
-        _mockUserManager.Setup(um => um.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+        var userDto = new UserDto()
+        {
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Id = user.ExternalId,
+            Email = user.Email,
+        };
+
+        _repositoryManagerMock
+            .Setup(r => r.UserRepository.GetByUsername(It.IsAny<string>()))
+            .ReturnsAsync(user);
+
+        _mapperManagerMock
+            .Setup(m => m.ApplicationUserToUserDtoMapper.Map(It.IsAny<ApplicationUser>()))
+            .Returns(userDto);
+
+        _mockUserManager
+            .Setup(um => um.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(true);
 
-        _mockUserManager.Setup(um => um.GetRolesAsync(It.IsAny<ApplicationUser>()))
+        _mockUserManager
+            .Setup(um => um.GetRolesAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(new List<string> { "User" });
 
-        _mockJwtTokenGenerator.Setup(jwt => jwt.GenerateToken(It.IsAny<ApplicationUser>(), It.IsAny<IList<string>>()))
+        _mockJwtTokenGenerator
+            .Setup(jwt => jwt.GenerateToken(It.IsAny<ApplicationUser>(), It.IsAny<IList<string>>()))
             .Returns("mock-token");
 
         // Act
         var result = await _authService.Login(loginRequestDto);
 
-        // Assert
-        Assert.IsNotNull(result);
-        Assert.IsNotNull(result.User);
-        Assert.AreEqual("mock-token", result.Token);
-        Assert.AreEqual(loginRequestDto.Username, result.User.Email);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(
+                (result.Result as LoginResponseDto).User.Email,
+                Is.EqualTo(loginRequestDto.Username)
+            );
+            Assert.That((result.Result as LoginResponseDto).Token, Is.EqualTo("mock-token"));
+        });
     }
 
     [Test]
@@ -182,24 +284,25 @@ public class Tests
         var loginRequestDto = new LoginRequestDto
         {
             Username = "testuser@example.com",
-            Password = "Password123!"
+            Password = "Password123!",
         };
 
-        var lst = Enumerable.Empty<ApplicationUser>();
-        
-        // Mock DbContext to return the mocked DbSet
-        _mockDbContext.Setup(x => x.ApplicationUsers).ReturnsDbSet(lst);
+        _repositoryManagerMock
+            .Setup(r => r.UserRepository.GetByUsername(It.IsAny<string>()))
+            .ReturnsAsync((ApplicationUser)null);
 
-        _mockUserManager.Setup(um => um.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+        _mockUserManager
+            .Setup(um => um.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(false);
 
         // Act
         var result = await _authService.Login(loginRequestDto);
 
         // Assert
-        Assert.IsNotNull(result);
-        Assert.IsNull(result.User);
-        Assert.AreEqual("", result.Token);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Result, Is.Null);
+        });
     }
-
 }

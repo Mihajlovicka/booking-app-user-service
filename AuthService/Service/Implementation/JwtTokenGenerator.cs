@@ -1,12 +1,13 @@
-﻿using AuthService.Model;
-using AuthService.Service.IService;
+﻿using AuthService.Model.Entity;
+using AuthService.Service.Contract;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using AuthService.Model.Entity;
 
-namespace AuthService.Service
+namespace AuthService.Service.Implementation
 {
     public class JwtTokenGenerator : IJwtTokenGenerator
     {
@@ -24,7 +25,7 @@ namespace AuthService.Service
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Email, applicationUser.Email),
-                new Claim(JwtRegisteredClaimNames.Sub, applicationUser.Id),
+                new Claim(JwtRegisteredClaimNames.Sub, applicationUser.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Name, applicationUser.UserName),
             };
 
