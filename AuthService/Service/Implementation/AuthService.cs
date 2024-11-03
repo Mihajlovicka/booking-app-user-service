@@ -13,11 +13,13 @@ public class AuthService(
     IRepositoryManager _repository,
     UserManager<ApplicationUser> _userManager,
     IJwtTokenGenerator _jwtTokenGenerator,
-    IMapperManager _mapperManager
+    IMapperManager _mapperManager,
+    ProducerService _kafkaProducer
 ) : IAuthService
 {
     public async Task<ResponseBase> Login(LoginRequestDto loginRequestDto)
     {
+        //_kafkaProducer.ProduceAsync(KafkaTopic.TestTopic.ToString(), loginRequestDto);
         var response = new ResponseBase();
         var user = await _repository.UserRepository.GetByUsername(loginRequestDto.Username);
 

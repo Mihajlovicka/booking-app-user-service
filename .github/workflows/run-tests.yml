@@ -1,33 +1,93 @@
-name: Build and test
-on: 
-  pull_request:
-      branches:
-        - develop
+name: CI - Test API
+
+on:
+  push:
+
+env:
+  DOCKER_HUB_USERNAME: mihajlovicka
+  IMAGE_NAME: mihajlovicka/booking
+  MAIN_REPO_WORKFLOW_PATH: https://api.github.com/repos/Mihajlovicka/booking-app-api-gateway/actions/workflows/run-integration-tests.yml/dispatches
 
 jobs:
+  build-and-test-api:
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.release.outputs.new_release_version }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
 
-  run-tests-backend:
+      # - name: SonarCloud Scan
+      #   uses: SonarSource/sonarcloud-github-action@v2
+      #   with:
+      #     projectBaseDir: .
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Semantic Release
+        id: release
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/github
+            @semantic-release/git
+            @semantic-release/exec
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_API_TOKEN }}
+
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and Test Docker Image (Test Stage)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          target: test
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.new_release_version }}-test
+          push: true
+          load: true
+
+      - name: Run Tests in Docker Container
+        run: |
+          docker run -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Docker ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.new_release_version }}-test
+
+      - name: Build Final Docker Image Using Cache and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          target: final
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.new_release_version }}-final
+          push: true
+
+  trigger:
+    needs: build-and-test-api
     runs-on: ubuntu-latest
     steps:
-        - name: checkout
-          uses: actions/checkout@v4
-        - name: Setup .NET
-          uses: actions/setup-dotnet@v3
-          with:
-            dotnet-version: '8.0.x'  
-
-        - name: Restore dependencies
-          run: |
-              dotnet restore AuthService/AuthService.sln
-              dotnet restore AuthService.Tests/AuthService.Tests.csproj
-
-        - name: Build
-          run: |
-            dotnet build AuthService/AuthService.sln --no-restore 
-            dotnet build AuthService.Tests/AuthService.Tests.csproj --no-restore 
-
-        - name: Run tests
-          run: dotnet test AuthService.Tests/AuthService.Tests.csproj --no-build 
-        
-
-     
+      - name: Trigger Workflow in Repository B
+        run: |
+          curl -v -X POST \
+          -H "Authorization: token ${{ secrets.REPO_API_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          ${{ env.MAIN_REPO_WORKFLOW_PATH }} \
+          -d '{
+            "ref": "feature-cicd-pipeline",
+            "inputs": {
+              "auth_service_image": "${{ env.IMAGE_NAME }}:${{ needs.build-and-test-api.outputs.release_version }}-test"
+            }
+          }'

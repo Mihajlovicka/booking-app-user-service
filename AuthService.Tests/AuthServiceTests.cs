@@ -4,11 +4,18 @@ using AuthService.Model.Dto;
 using AuthService.Model.Entity;
 using AuthService.Repository.Contract;
 using AuthService.Service.Contract;
+using AuthService.Service.MessagingService;
 using Microsoft.AspNetCore.Identity;
 using Moq;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Confluent.Kafka;
+
 
 namespace AuthService.Tests;
 
+[TestFixture]
+[Category("Unit")]
 public class Tests
 {
     private Mock<AppDbContext> _mockDbContext;
@@ -16,6 +23,7 @@ public class Tests
     private Mock<IMapperManager> _mapperManagerMock;
     private Mock<UserManager<ApplicationUser>> _mockUserManager;
     private Mock<IJwtTokenGenerator> _mockJwtTokenGenerator;
+    private Mock<ProducerService> _mockProducerService;
     private IAuthService _authService;
 
     [SetUp]
@@ -25,6 +33,10 @@ public class Tests
 
         _repositoryManagerMock = new Mock<IRepositoryManager>();
         _mapperManagerMock = new Mock<IMapperManager>();
+        var loggerMock = new Mock<ILogger<ProducerService>>();
+        var kafkaConfigMock = Mock.Of<IOptions<ProducerConfig>>(x => x.Value == new ProducerConfig());
+
+        _mockProducerService = new Mock<ProducerService>(loggerMock.Object, kafkaConfigMock);
 
         _mockUserManager = new Mock<UserManager<ApplicationUser>>(
             new Mock<IUserStore<ApplicationUser>>().Object,
@@ -47,7 +59,8 @@ public class Tests
             _repositoryManagerMock.Object,
             _mockUserManager.Object,
             _mockJwtTokenGenerator.Object,
-            _mapperManagerMock.Object
+            _mapperManagerMock.Object,
+            _mockProducerService.Object
         );
     }
 
