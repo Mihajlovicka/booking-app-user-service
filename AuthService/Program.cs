@@ -16,10 +16,13 @@ if (environment == "Docker")
 }
 builder.Configuration.AddEnvironmentVariables();
 
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Database") 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(option =>
 {
-    option.UseMySQL(builder.Configuration.GetConnectionString("DefaultConnection"));
+    option.UseMySQL(connectionString);
 });
 
 builder.Services.AddCustomCors();
