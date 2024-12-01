@@ -18,6 +18,7 @@ internal class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public CustomWebApplicationFactory()
     {
         var baseConnectionString = "Server=db;Port=3306;Database=booking-auth;Uid=root;Pwd=admin;";
+        
         // var baseConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Database") 
         //                            ?? "Server=localhost;Port=3306;Database=test;Uid=root;Pwd=admin;";
 
