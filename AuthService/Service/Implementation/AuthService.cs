@@ -14,7 +14,7 @@ public class AuthService(
     UserManager<ApplicationUser> _userManager,
     IJwtTokenGenerator _jwtTokenGenerator,
     IMapperManager _mapperManager,
-    ProducerService _kafkaProducer
+    //ProducerService _kafkaProducer
 ) : IAuthService
 {
     public async Task<ResponseBase> Login(LoginRequestDto loginRequestDto)
