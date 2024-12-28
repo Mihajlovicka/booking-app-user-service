@@ -1,8 +1,8 @@
-using AuthService.Service.MessagingService;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
+using UserService.Service.MessagingService;
 
-namespace AuthService.Extensions;
+namespace UserService.Extensions;
 
 public static class KafkaExtensions
 {
@@ -16,12 +16,12 @@ public static class KafkaExtensions
         services.AddSingleton<ProducerService>();
 
         // Configure Consumer
-        services.Configure<ConsumerConfig>(configuration.GetSection("KafkaConfig:Consumer"));
+        // services.Configure<ConsumerConfig>(configuration.GetSection("KafkaConfig:Consumer"));
         // services.AddHostedService(provider =>
         // {
         //     var logger = provider.GetRequiredService<ILogger<ConsumerService>>();
         //     var consumerConfig = provider.GetRequiredService<IOptions<ConsumerConfig>>();
-        //     var topic = KafkaTopic.TestTopic;
+        //     var topic = KafkaTopic.UserCreated.ToString();
 
         //     return new ConsumerService(logger, consumerConfig, topic);
         // });
