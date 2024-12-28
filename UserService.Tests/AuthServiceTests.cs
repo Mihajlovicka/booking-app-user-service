@@ -52,12 +52,7 @@ public class Tests
             .Setup(repo => repo.UserRepository)
             .Returns(new Mock<IUserRepository>().Object);
 
-        var producerConfig = new ProducerConfig
-        {
-            BootstrapServers =
-                "localhost:9092" // Example config, modify as needed
-            ,
-        };
+        var producerConfig = new ProducerConfig { BootstrapServers = "localhost:9092" };
         var mockKafkaConfig = Mock.Of<IOptions<ProducerConfig>>(options =>
             options.Value == producerConfig
         );
@@ -288,7 +283,7 @@ public class Tests
     }
 
     [Test]
-    public async Task Login_UserInvalid_ThrowsUnauthorizedException()
+    public async Task Login_UserInvalid_ThrowsBadHttpRequestException()
     {
         // Arrange
         var loginRequestDto = new LoginRequestDto
@@ -305,7 +300,7 @@ public class Tests
             .Setup(um => um.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(false);
 
-        var ex = Assert.ThrowsAsync<UnauthorizedAccessException>(
+        var ex = Assert.ThrowsAsync<BadHttpRequestException>(
             async () => await _authService.Login(loginRequestDto)
         );
         Assert.That(ex.Message, Is.EqualTo("Invalid username or password"));

@@ -1,18 +1,20 @@
 name: CI - Test API
 
 on:
-  push:
+  pull_request:
+    branches:
+      - develop
+      - master
 
 env:
   DOCKER_HUB_USERNAME: mihajlovicka
   IMAGE_NAME: mihajlovicka/booking
+  TEST_IMAGE: user-service-test
   MAIN_REPO_WORKFLOW_PATH: https://api.github.com/repos/Mihajlovicka/booking-app-api-gateway/actions/workflows/run-integration-tests.yml/dispatches
 
 jobs:
   build-and-test-api:
     runs-on: ubuntu-latest
-    outputs:
-      release_version: ${{ steps.release.outputs.new_release_version }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -23,20 +25,6 @@ jobs:
           projectBaseDir: .
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      - name: Semantic Release
-        id: release
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          extra_plugins: |
-            @semantic-release/commit-analyzer
-            @semantic-release/release-notes-generator
-            @semantic-release/github
-            @semantic-release/git
-            @semantic-release/exec
-        env:
-          GITHUB_TOKEN: ${{ secrets.REPO_API_TOKEN }}
-
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -56,24 +44,13 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.new_release_version }}-test
+            ${{ env.IMAGE_NAME }}:${{ env.TEST_IMAGE }}
           push: true
           load: true
 
       - name: Run Tests in Docker Container
         run: |
-          docker run -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Docker ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.new_release_version }}-test
-
-      - name: Build Final Docker Image Using Cache and Push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          target: final
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
-          tags: ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.new_release_version }}-final
-          push: true
+          docker run -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Docker ${{ env.IMAGE_NAME }}:${{ env.TEST_IMAGE }}
 
   trigger:
     needs: build-and-test-api
@@ -88,6 +65,6 @@ jobs:
           -d '{
             "ref": "feature-cicd-pipeline",
             "inputs": {
-              "auth_service_image": "${{ env.IMAGE_NAME }}:${{ needs.build-and-test-api.outputs.release_version }}-test"
+              "auth_service_image": "${{ env.IMAGE_NAME }}:${{ env.TEST_IMAGE }}"
             }
           }'

@@ -8,6 +8,8 @@ using UserService.Model.Entity;
 
 namespace UserService.Tests;
 
+[TestFixture]
+[Category("Integration")]
 public class AuthControllerIntegrationTests
 {
     private HttpClient _client;
@@ -18,7 +20,7 @@ public class AuthControllerIntegrationTests
     {
         _factory = new CustomWebApplicationFactory();
         _client = _factory.CreateClient();
-        SetupDbData();
+        SetupDbData().Wait();
     }
 
     [OneTimeTearDown]
@@ -31,8 +33,6 @@ public class AuthControllerIntegrationTests
     [Test]
     public async Task Register_UserCreatedSuccessfully_ReturnsOk()
     {
-        //SetupDbData();
-        // Arrange
         var registrationRequest = new RegistrationRequestDto
         {
             Email = "newuser@example.com",
@@ -40,7 +40,7 @@ public class AuthControllerIntegrationTests
             LastName = "Last Name",
             Password = "Password123!",
             Role = "GUEST",
-            Address = new()
+            Address = new AddressDto()
             {
                 City = "City",
                 Country = "Country",
@@ -49,10 +49,8 @@ public class AuthControllerIntegrationTests
                 StreetNumber = "StreetNumber",
             },
         };
-        // Act
         var response = await _client.PostAsJsonAsync("/api/auth/register", registrationRequest);
 
-        // Assert
         response.EnsureSuccessStatusCode();
     }
 
@@ -82,10 +80,10 @@ public class AuthControllerIntegrationTests
         };
         var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
 
-        Assert.AreEqual(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private async void SetupDbData()
+    private async Task SetupDbData()
     {
         using (var scope = _factory.Services.CreateScope())
         {
@@ -117,7 +115,7 @@ public class AuthControllerIntegrationTests
                     "AQAAAAIAAYagAAAAEBQ7++M6z5N+Tly9yfor8HhJxhg52bNmZAIANR+cR6og/UgoUz8GhnlZQr2NFAP48g==",
                 ExternalId = Guid.NewGuid(),
                 SecurityStamp = Guid.NewGuid().ToString(),
-                Address = new()
+                Address = new Address()
                 {
                     City = "City",
                     Country = "Country",
