@@ -1,0 +1,41 @@
+services:
+  db:
+    extends:
+      file: docker-compose.base.yml
+      service: db
+    environment:
+      MYSQL_ROOT_USER: ${DB_USER}
+      MYSQL_USERNAME: ${DB_USER}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+
+  kafka:
+    extends:
+      file: docker-compose.base.yml
+      service: kafka
+
+  zookeeper:
+    extends:
+      file: docker-compose.base.yml
+      service: zookeeper
+
+  auth_service:
+    image: ${IMAGE_NAME}:${TEST_IMAGE}
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - mynet
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ConnectionStrings__Database=Server=db;Port=3306;Database=booking-auth;Uid=${DB_USER};Pwd=${DB_PASSWORD};
+
+volumes:
+  db-data:
+
+networks:
+  mynet:
+    driver: bridge

@@ -1,33 +1,70 @@
-name: Build and test
-on: 
+name: CI - Test API
+
+on:
   pull_request:
-      branches:
-        - develop
+    branches:
+      - develop
+      - master
+  workflow_dispatch:
+
+env:
+  DOCKER_HUB_USERNAME: mihajlovicka
+  IMAGE_NAME: mihajlovicka/booking
+  TEST_IMAGE: user-service-test
 
 jobs:
-
-  run-tests-backend:
+  build-and-test-api:
     runs-on: ubuntu-latest
     steps:
-        - name: checkout
-          uses: actions/checkout@v4
-        - name: Setup .NET
-          uses: actions/setup-dotnet@v3
-          with:
-            dotnet-version: '8.0.x'  
+      - name: Check out code
+        uses: actions/checkout@v4
 
-        - name: Restore dependencies
-          run: |
-              dotnet restore AuthService/AuthService.sln
-              dotnet restore AuthService.Tests/AuthService.Tests.csproj
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-        - name: Build
-          run: |
-            dotnet build AuthService/AuthService.sln --no-restore 
-            dotnet build AuthService.Tests/AuthService.Tests.csproj --no-restore 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-        - name: Run tests
-          run: dotnet test AuthService.Tests/AuthService.Tests.csproj --no-build 
-        
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-     
+      - name: Build and Push Image with Cache
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          target: test
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.TEST_IMAGE }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Set up Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: Set Docker secrets as environment variables
+        run: |
+          echo "DB_USER=${{ secrets.DB_USER }}" > .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "IMAGE_NAME=${{ env.IMAGE_NAME }}" >> .env
+          echo "TEST_IMAGE=${{ env.TEST_IMAGE }}" >> .env
+          echo "DOCKER_BUILDKIT=1" >> .env
+
+      - name: Build and run tests with Docker Compose
+        run: |
+          docker-compose -f docker-compose.yml up --abort-on-container-exit
+
+      - name: Clean up Docker Compose
+        if: always()
+        run: docker-compose down
