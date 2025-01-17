@@ -10,7 +10,7 @@ on:
 env:
   DOCKER_HUB_USERNAME: mihajlovicka
   IMAGE_NAME: mihajlovicka/booking
-  MAIN_REPO_WORKFLOW_PATH: https://api.github.com/repos/Mihajlovicka/booking-app-api-gateway/actions/workflows/run-integration-tests.yml/dispatches
+  SERVICE_NAME: user-service
 
 jobs:
   build-and-test-api:
@@ -23,6 +23,7 @@ jobs:
         id: release
         uses: cycjimmy/semantic-release-action@v4
         with:
+          tag_format: ${{env.SERVICE_NAME}}-v${version}
           extra_plugins: |
             @semantic-release/commit-analyzer
             @semantic-release/release-notes-generator
@@ -47,7 +48,7 @@ jobs:
           context: .
           file: Dockerfile
           target: final
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
-          tags: ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.new_release_version }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:${{env.SERVICE_NAME}}-buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:${{env.SERVICE_NAME}}-buildcache,mode=max
+          tags: ${{ env.IMAGE_NAME }}:${{env.SERVICE_NAME}}-${{ steps.release.outputs.new_release_version }}
           push: true

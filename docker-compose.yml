@@ -19,7 +19,7 @@ services:
       service: zookeeper
 
   auth_service:
-    image: ${IMAGE_NAME}:${TEST_IMAGE}
+    image: ${IMAGE_NAME}:${SERVICE_NAME}-test
     depends_on:
       db:
         condition: service_healthy
