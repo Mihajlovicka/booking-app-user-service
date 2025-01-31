@@ -38,18 +38,17 @@ builder.Services.AddDbContext<AppDbContext>(option =>
 
 builder.Services.AddCustomCors();
 
-builder.Services.AddKafkaServices(builder.Configuration);
-builder.Services.AddCustomServices();
-
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("ApiSettings:JwtOptions"));
 builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.SuppressModelStateInvalidFilter = true
 );
 
 builder
-    .Services.AddIdentity<ApplicationUser, IdentityRole<int>>()
+    .Services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+    })
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
@@ -57,6 +56,10 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationFilterAttribute>();
 });
+
+builder.Services.AddKafkaServices(builder.Configuration);
+builder.Services.AddCustomServices(builder.Configuration);
+builder.AddAuthenticationAndAuthorization();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -85,10 +88,11 @@ app.UseExceptionHandler(builder =>
         }
     });
 });
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.UseCors(CorsExtensions.GetCorsPolicyName());
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.ApplyPendingMigrations();

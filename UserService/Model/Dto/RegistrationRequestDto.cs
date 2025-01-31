@@ -6,6 +6,8 @@ namespace UserService.Model.Dto
 {
     public class RegistrationRequestDto
     {
+        [Required]
+        [EmailAddress]
         public string Email { get; set; }
 
         public string Password { get; set; }
@@ -24,5 +26,8 @@ namespace UserService.Model.Dto
         public string LastName { get; set; }
 
         public AddressDto Address { get; set; }
+
+        [Required]
+        public string Username { get; set; }
     }
 }

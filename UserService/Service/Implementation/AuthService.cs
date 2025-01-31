@@ -13,7 +13,8 @@ public class AuthService(
     UserManager<ApplicationUser> _userManager,
     IJwtTokenGenerator _jwtTokenGenerator,
     IMapperManager _mapperManager,
-    ProducerService producerService
+    ProducerService producerService,
+    IUserContextService _userContextService
 ) : IAuthService
 {
     public async Task<LoginResponseDto> Login(LoginRequestDto loginRequestDto)
@@ -46,7 +47,7 @@ public class AuthService(
             );
 
         var createdUser = await _repository.UserRepository.GetByUsername(
-            registrationRequestDto.Email
+            registrationRequestDto.Username
         );
         if (createdUser == null)
             throw new BadHttpRequestException("User creation failed");
@@ -55,5 +56,28 @@ public class AuthService(
         var userDto = _mapperManager.ApplicationUserToUserDtoMapper.Map(createdUser);
         userDto.Role = registrationRequestDto.Role;
         _ = producerService.ProduceAsync(KafkaTopic.UserCreated.ToString(), userDto);
+    }
+
+    public async Task ChangePassword(ChangePasswordDto changePasswordDto)
+    {
+        var user = await _repository.UserRepository.GetByUsername(
+            _userContextService.GetCurrentUserAsync().Result.UserName
+        );
+        if (user == null)
+            throw new BadHttpRequestException("User not found");
+
+        if (changePasswordDto.NewPassword != changePasswordDto.ConfirmPassword)
+            throw new BadHttpRequestException("Passwords do not match");
+
+        var result = await _userManager.ChangePasswordAsync(
+            user,
+            changePasswordDto.CurrentPassword,
+            changePasswordDto.NewPassword
+        );
+        if (!result.Succeeded)
+            throw new BadHttpRequestException(
+                result.Errors.FirstOrDefault()?.Description
+                    ?? "Password change failed. Old password is incorrect."
+            );
     }
 }

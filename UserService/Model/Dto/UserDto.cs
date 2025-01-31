@@ -1,4 +1,5 @@
 namespace UserService.Model.Dto;
+
 public class UserDto
 {
     public Guid Id { get; set; }
@@ -6,5 +7,6 @@ public class UserDto
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public string? Role { get; set; }
-
+    public string Username { get; set; }
+    public AddressDto? Address { get; set; }
 }

@@ -13,6 +13,15 @@ public class ApplicationUserToUserDto : BaseMapper<ApplicationUser, UserDto>
             Id = source.ExternalId,
             FirstName = source.FirstName,
             LastName = source.LastName,
+            Username = source.UserName,
+            Address = new()
+            {
+                City = source.Address.City,
+                Country = source.Address.Country,
+                PostNumber = source.Address.PostNumber,
+                StreetName = source.Address.StreetName,
+                StreetNumber = source.Address.StreetNumber,
+            },
         };
     }
 }

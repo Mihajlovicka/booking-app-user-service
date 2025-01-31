@@ -4,15 +4,16 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using UserService.Model.Entity;
+using UserService.Model.Settings;
 using UserService.Service.Contract;
 
 namespace UserService.Service.Implementation
 {
     public class JwtTokenGenerator : IJwtTokenGenerator
     {
-        private readonly JwtOptions _jwtOptions;
+        private readonly JwtSettings _jwtOptions;
 
-        public JwtTokenGenerator(IOptions<JwtOptions> jwtOptions)
+        public JwtTokenGenerator(IOptions<JwtSettings> jwtOptions)
         {
             _jwtOptions = jwtOptions.Value;
         }
