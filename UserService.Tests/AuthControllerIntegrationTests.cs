@@ -44,6 +44,7 @@ public class AuthControllerIntegrationTests
         var registrationRequest = new RegistrationRequestDto
         {
             Email = "newuser@example.com",
+            Username = "new@example.com",
             FirstName = "First Name",
             LastName = "Last Name",
             Password = "Password123!",
@@ -71,6 +72,7 @@ public class AuthControllerIntegrationTests
     }
 
     [Test]
+    [Order(0)]
     public async Task Login_ValidCredentials_ReturnsOk()
     {
         var loginRequest = new LoginRequestDto
@@ -95,6 +97,74 @@ public class AuthControllerIntegrationTests
             Password = "WrongPassword!",
         };
         var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+
+        Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Test]
+    public async Task ChangePassword_ValidCredentials_ReturnsNoContent()
+    {
+        var changePasswordRequest = new ChangePasswordDto
+        {
+            CurrentPassword = "Password123!",
+            NewPassword = "NewPassword123!",
+            ConfirmPassword = "NewPassword123!",
+        };
+
+        var loginRequest = new LoginRequestDto
+        {
+            Username = "test@example.com",
+            Password = "Password123!",
+        };
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        loginResponse.EnsureSuccessStatusCode();
+
+        var loginResponseObj = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                loginResponseObj?.Token
+            );
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/change-password",
+            changePasswordRequest
+        );
+
+        Assert.AreEqual(System.Net.HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Test]
+    public async Task ChangePassword_InvalidCurrentPassword_ReturnsBadRequest()
+    {
+        var changePasswordRequest = new ChangePasswordDto
+        {
+            CurrentPassword = "WrongPassword!",
+            NewPassword = "NewPassword123!",
+            ConfirmPassword = "NewPassword123!",
+        };
+
+        var loginRequest = new LoginRequestDto
+        {
+            Username = "test@example.com",
+            Password = "Password123!",
+        };
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        loginResponse.EnsureSuccessStatusCode();
+
+        var loginResponseObj = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                loginResponseObj?.Token
+            );
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/change-password",
+            changePasswordRequest
+        );
 
         Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }

@@ -10,7 +10,8 @@ public class RegistrationsRequestDtoToApplicationUser
     {
         return new()
         {
-            UserName = source.Email,
+            UserName = source.Username,
+            NormalizedUserName = source.Username.ToUpper(),
             Email = source.Email,
             NormalizedEmail = source.Email.ToUpper(),
             FirstName = source.FirstName,

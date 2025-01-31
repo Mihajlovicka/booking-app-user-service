@@ -23,6 +23,8 @@ public class Tests
     private Mock<UserManager<ApplicationUser>> _mockUserManager;
     private Mock<IJwtTokenGenerator> _mockJwtTokenGenerator;
     private Mock<ProducerService> _mockProducerService;
+
+    private Mock<IUserContextService> _mockUserContextService;
     private IAuthService _authService;
 
     [SetUp]
@@ -61,13 +63,15 @@ public class Tests
             new Mock<ILogger<ProducerService>>().Object,
             mockKafkaConfig
         );
+        _mockUserContextService = new Mock<IUserContextService>();
 
         _authService = new Service.Implementation.AuthService(
             _repositoryManagerMock.Object,
             _mockUserManager.Object,
             _mockJwtTokenGenerator.Object,
             _mapperManagerMock.Object,
-            _mockProducerService.Object
+            _mockProducerService.Object,
+            _mockUserContextService.Object
         );
 
         _mockProducerService.Setup(p => p.ProduceAsync(It.IsAny<string>(), It.IsAny<object>()));
