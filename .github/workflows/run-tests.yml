@@ -19,6 +19,13 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Check out frontend repo (for docker-compose)
+        uses: actions/checkout@v4
+        with:
+          repository: Mihajlovicka/booking-app-frontend
+          ref: develop
+          path: frontend-repo
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
@@ -55,16 +62,17 @@ jobs:
 
       - name: Set Docker secrets as environment variables
         run: |
-          echo "DB_USER=${{ secrets.DB_USER }}" > .env
-          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-          echo "IMAGE_NAME=${{ env.IMAGE_NAME }}" >> .env
-          echo "SERVICE_NAME=${{ env.SERVICE_NAME }}" >> .env
-          echo "DOCKER_BUILDKIT=1" >> .env
+          echo "DB_USER=${{ secrets.DB_USER }}" > frontend-repo/.env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> frontend-repo/.env
+          echo "IMAGE_NAME=${{ env.IMAGE_NAME }}" >> frontend-repo/.env
+          echo "SERVICE_NAME=${{ env.SERVICE_NAME }}" >> frontend-repo/.env
+          echo "DOCKER_BUILDKIT=1" >> frontend-repo/.env
 
-      - name: Build and run tests with Docker Compose
+      - name: Build and run tests with Docker Compose from frontend repo
         run: |
-          docker-compose -f docker-compose.yml up --abort-on-container-exit
+          docker-compose -f frontend-repo/docker-compose.test.yml up --abort-on-container-exit
 
       - name: Clean up Docker Compose
         if: always()
-        run: docker-compose down
+        run: docker-compose -f frontend-repo/docker-compose.test.yml down
+
