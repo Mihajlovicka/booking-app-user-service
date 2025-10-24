@@ -6,4 +6,5 @@ public interface IUserService
 {
     Task<UserDto> GetLoggedUser();
     Task<UserDto> Update(UserDto userDto);
+    Task Delete();
 }

@@ -21,4 +21,12 @@ public class UserController(IUserService userService) : ControllerBase
     {
         return Ok(await userService.Update(userDto));
     }
+
+    [HttpGet("delete")]
+    public async Task<IActionResult> Delete()
+    {
+        await userService.Delete();
+        return NoContent();
+    }
+
 }

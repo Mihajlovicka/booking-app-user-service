@@ -1,6 +1,9 @@
 using System;
 using System.Threading.Tasks;
+using Confluent.Kafka;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using NUnit.Framework;
 using UserService.Mapper;
@@ -9,6 +12,7 @@ using UserService.Model.Entity;
 using UserService.Repository.Contract;
 using UserService.Service.Contract;
 using UserService.Service.Implementation;
+using UserService.Service.MessagingService;
 
 namespace UserService.Tests;
 
@@ -19,6 +23,7 @@ public class UserServiceTests
     private Mock<IUserContextService> _mockUserContextService;
     private Mock<IMapperManager> _mockMapperManager;
     private Mock<IRepositoryManager> _mockRepositoryManager;
+    private Mock<ProducerService> _mockProducerService;
     private IUserService _userService;
 
     [SetUp]
@@ -28,11 +33,24 @@ public class UserServiceTests
         _mockMapperManager = new Mock<IMapperManager>();
         _mockRepositoryManager = new Mock<IRepositoryManager>();
 
+        var producerConfig = new ProducerConfig { BootstrapServers = "localhost:9092" };
+        var mockKafkaConfig = Mock.Of<IOptions<ProducerConfig>>(options =>
+            options.Value == producerConfig
+        );
+
+        _mockProducerService = new Mock<ProducerService>(
+            new Mock<ILogger<ProducerService>>().Object,
+            mockKafkaConfig
+        );
+
         _userService = new Service.Implementation.UserService(
             _mockUserContextService.Object,
             _mockMapperManager.Object,
-            _mockRepositoryManager.Object
+            _mockRepositoryManager.Object,
+            _mockProducerService.Object
         );
+
+        _mockProducerService.Setup(p => p.ProduceAsync(It.IsAny<string>(), It.IsAny<object>()));
     }
 
     [Test]

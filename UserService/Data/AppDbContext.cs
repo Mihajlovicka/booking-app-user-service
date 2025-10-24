@@ -33,6 +33,12 @@ namespace UserService.Data
                         NormalizedName = Role.HOST.ToString(),
                     }
                 );
+
+            modelBuilder.Entity<ApplicationUser>()
+                .HasOne(a => a.Address)
+                .WithMany()
+                .HasForeignKey(a => a.AddressId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

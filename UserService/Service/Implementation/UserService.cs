@@ -4,13 +4,15 @@ using UserService.Model.Dto;
 using UserService.Model.Entity;
 using UserService.Repository.Contract;
 using UserService.Service.Contract;
+using UserService.Service.MessagingService;
 
 namespace UserService.Service.Implementation;
 
 public class UserService(
     IUserContextService userContextService,
     IMapperManager mapperManager,
-    IRepositoryManager repositoryManager
+    IRepositoryManager repositoryManager,
+    ProducerService producerService
 ) : IUserService
 {
     public async Task<UserDto> GetLoggedUser()
@@ -52,4 +54,14 @@ public class UserService(
         await repositoryManager.UserRepository.UpdateAsync(user);
         return mapperManager.ApplicationUserToUserDtoMapper.Map(user);
     }
+
+    public async Task Delete()
+    {
+        var logged = await userContextService.GetCurrentUserAsync();
+        var userDto = mapperManager.ApplicationUserToUserDtoMapper.Map(logged);
+        _ = producerService.ProduceAsync(KafkaTopic.DeleteUser.ToString(), userDto);
+
+        await repositoryManager.UserRepository.DeleteAsync(logged.Id);
+    }
+    
 }
