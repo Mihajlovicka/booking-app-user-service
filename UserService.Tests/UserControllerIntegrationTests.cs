@@ -187,6 +187,38 @@ public class UserControllerIntegrationTests
         Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Test]
+    public async Task CanDelete_No()
+    {
+
+        var loginRequest = new LoginRequestDto
+        {
+            Username = "existing@example.com",
+            Password = "Password123!",
+        };
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        loginResponse.EnsureSuccessStatusCode();
+
+        var loginResponseObj = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                loginResponseObj?.Token
+            );
+
+
+        var getResponse = await _client.GetAsync($"/api/user/delete");
+        getResponse.EnsureSuccessStatusCode();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var matchingUsers = db.Users
+        .Where(u => u.UserName == loginRequest.Username)
+        .ToList();
+        Assert.That(matchingUsers, Is.Empty);
+    }
     private async Task SetupDbData()
     {
         using (var scope = _factory.Services.CreateScope())

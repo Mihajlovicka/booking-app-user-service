@@ -106,7 +106,7 @@ app.Use(async (context, next) =>
                                new KeyValuePair<string, object?>("timestamp", timestamp));
 });
 
-if (!app.Environment.IsEnvironment("Testing"))
+if (!app.Environment.IsEnvironment("Testing") && environment == "Docker")
 {
     app.UseSerilogRequestLogging(options =>
     {
